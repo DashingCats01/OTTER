@@ -58,7 +58,7 @@ int main() {
 		
 		
 		shader->Link();
-
+		
 		glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 2.0f);
 		glm::vec3 lightCol = glm::vec3(0.9f, 0.85f, 0.5f);
 		float     lightAmbientPow = 0.05f;
