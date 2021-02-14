@@ -117,14 +117,14 @@ int main() {
 					mode_4 = false;
 					mode_5 = false;
 				}
-				if (ImGui::Checkbox("Specular Ambient and Diffuse", &mode_4))
+				if (ImGui::Checkbox("Specular + Ambient", &mode_4))
 				{
 					mode_1 = false;
 					mode_2 = false;
 					mode_3 = false;
 					mode_5 = false;
 				}
-				if (ImGui::Checkbox("+ Toon Shading", &mode_5))
+				if (ImGui::Checkbox("Specular + Ambient + Bloom", &mode_5))
 				{
 					mode_1 = false;
 					mode_2 = false;
@@ -298,6 +298,7 @@ int main() {
 			camera.SetOrthoHeight(3.0f);
 			BehaviourBinding::Bind<CameraControlBehaviour>(cameraObject);
 		}
+
 
 		#pragma endregion 
 		//////////////////////////////////////////////////////////////////////////////////////////

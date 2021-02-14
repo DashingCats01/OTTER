@@ -13,8 +13,8 @@ void PostEffect::Init(unsigned width, unsigned height)
 	}
 
 	_shaders.push_back(Shader::Create());
-	_shaders[_shaders.size() - 1]->LoadShaderPartFromFile("shaders/passthrough_vert.glsl", GL_VERTEX_SHADER);
-	_shaders[_shaders.size() - 1]->LoadShaderPartFromFile("shaders/passthrough_frag.glsl", GL_FRAGMENT_SHADER);
+	_shaders[_shaders.size() - 1]->LoadShaderPartFromFile("shaders/vertex_shader.glsl", GL_VERTEX_SHADER);
+	_shaders[_shaders.size() - 1]->LoadShaderPartFromFile("shaders/frag_blinn_phong_textured.glsl", GL_FRAGMENT_SHADER);
 	_shaders[_shaders.size() - 1]->Link();
 
 }

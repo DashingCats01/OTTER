@@ -120,6 +120,11 @@ void main() {
 
 		frag_color = vec4(result, textureColor.rgb);
 	}
+	else 
+	{
+		vec3 result = (inColor*textureColor.rgb);
+		frag_color = vec4(result, textureColor.rgb);
+	}
 
 	
 	

@@ -25,6 +25,7 @@
 #include <CameraControlBehaviour.h>
 #include <FollowPathBehaviour.h>
 #include <SimpleMoveBehaviour.h>
+#include <EnvironmentGenerator.h>
 
 
 
@@ -52,11 +53,14 @@ int main() {
 		#pragma region Shader and ImGui
 
 		// Load our shaders
+		Shader::sptr passthroughShader = Shader::Create();
+		passthroughShader->LoadShaderPartFromFile("shaders/passthrough_vert.glsl", GL_VERTEX_SHADER);
+		passthroughShader->LoadShaderPartFromFile("shaders/passthrough_frag.glsl", GL_FRAGMENT_SHADER);
+		passthroughShader->Link();
+
 		Shader::sptr shader = Shader::Create();
 		shader->LoadShaderPartFromFile("shaders/vertex_shader.glsl", GL_VERTEX_SHADER);
 		shader->LoadShaderPartFromFile("shaders/frag_blinn_phong_textured.glsl", GL_FRAGMENT_SHADER);
-		
-		
 		shader->Link();
 
 		glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 2.0f);
@@ -68,12 +72,16 @@ int main() {
 		float     lightLinearFalloff = 0.09f;
 		float     lightQuadraticFalloff = 0.032f;
 		float	  LightAttenuationConstant = 1.0f;
+		float	brightness = 500.0f;
+		float	blurValues = 10.0f;
 		
 		bool	  mode_1 = true;
 		bool	  mode_2 = false;
 		bool	  mode_3 = false;
 		bool	  mode_4 = false;
 		bool	  mode_5 = false;
+
+		bool texture = true;
 		
 		// These are our application / scene level uniforms that don't necessarily update
 		// every frame
@@ -86,6 +94,8 @@ int main() {
 		shader->SetUniform("u_LightAttenuationConstant", LightAttenuationConstant);
 		shader->SetUniform("u_LightAttenuationLinear", lightLinearFalloff);
 		shader->SetUniform("u_LightAttenuationQuadratic", lightQuadraticFalloff);
+		shader->SetUniform("u_brightnessThresshold", brightness);
+		shader->SetUniform("u_blurValues", brightness);
 
 
 		
@@ -132,8 +142,18 @@ int main() {
 					mode_4 = false;
 				}
 
-			}
+				ImGui::SliderFloat("Brightness Threshold", &brightness, 0.0f, 1000.0f);
+				ImGui::SliderFloat("Blur Values", &blurValues, 0.0f, 100.0f);
 
+
+			}
+			if (ImGui::CollapsingHeader("Environment generation"))
+			{
+				if (ImGui::Button("Regenerate Environment", ImVec2(200.0f, 40.0f)))
+				{
+					EnvironmentGenerator::RegenerateEnvironment();
+				}
+			}
 			shader->SetUniform("u_mode1", (int)mode_1);
 			shader->SetUniform("u_mode2", (int)mode_2);
 			shader->SetUniform("u_mode3", (int)mode_3);
@@ -171,6 +191,11 @@ int main() {
 		// Load some textures from files
 		Texture2D::sptr diffuse = Texture2D::LoadFromFile("images/Stone_001_Diffuse.png");
 		Texture2D::sptr diffuse2 = Texture2D::LoadFromFile("images/box.bmp");
+		Texture2D::sptr snow = Texture2D::LoadFromFile("images/snow.jpg");
+		Texture2D::sptr red = Texture2D::LoadFromFile("images/Red.jpg");
+		Texture2D::sptr blue = Texture2D::LoadFromFile("images/blue.jpg");
+		Texture2D::sptr yellow = Texture2D::LoadFromFile("images/yellow.jpg");
+		Texture2D::sptr grass = Texture2D::LoadFromFile("images/grass.jpg");
 		Texture2D::sptr specular = Texture2D::LoadFromFile("images/Stone_001_Specular.png");
 		Texture2D::sptr reflectivity = Texture2D::LoadFromFile("images/box-reflections.bmp");
 
@@ -212,77 +237,98 @@ int main() {
 		material0->Set("s_Diffuse2", diffuse2);
 		material0->Set("s_Specular", specular);
 		material0->Set("u_Shininess", 8.0f);
-		material0->Set("u_TextureMix", 0.5f); 
+		material0->Set("u_TextureMix", 0.5f);
+
+		ShaderMaterial::sptr redmat = ShaderMaterial::Create();
+		redmat->Shader = shader;
+		redmat->Set("s_Diffuse", red);
+		redmat->Set("s_Specular", specular);
+		redmat->Set("u_Shininess", 8.0f);
+		redmat->Set("u_TextureMix", 0.5f);
+
+		ShaderMaterial::sptr bluemat = ShaderMaterial::Create();
+		bluemat->Shader = shader;
+		bluemat->Set("s_Diffuse", blue);
+		bluemat->Set("s_Specular", specular);
+		bluemat->Set("u_Shininess", 8.0f);
+		bluemat->Set("u_TextureMix", 0.5f);
+
+		ShaderMaterial::sptr yellowmat = ShaderMaterial::Create();
+		yellowmat->Shader = shader;
+		yellowmat->Set("s_Diffuse", yellow);
+		yellowmat->Set("s_Specular", specular);
+		yellowmat->Set("u_Shininess", 8.0f);
+		yellowmat->Set("u_TextureMix", 0.5f);
+
+		ShaderMaterial::sptr grassmat = ShaderMaterial::Create();
+		grassmat->Shader = shader;
+		grassmat->Set("s_Diffuse", grass);
+		grassmat->Set("s_Specular", specular);
+		grassmat->Set("u_Shininess", 8.0f);
+		grassmat->Set("u_TextureMix", 0.5f);
 
 
 		GameObject sceneObj = scene->CreateEntity("scene_geo"); 
 		{
 			VertexArrayObject::sptr sceneVao = NotObjLoader::LoadFromFile("Sample.notobj");
-			sceneObj.emplace<RendererComponent>().SetMesh(sceneVao).SetMaterial(material0);
+			sceneObj.emplace<RendererComponent>().SetMesh(sceneVao).SetMaterial(grassmat);
 			sceneObj.get<Transform>().SetLocalPosition(0.0f, 0.0f, 0.0f);
+			sceneObj.get<Transform>().SetLocalScale(10.f, 10.f, 1.0f);
 		}
 
-		GameObject obj2 = scene->CreateEntity("monkey_quads");
-		{
-			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/monkey_quads.obj");
-			obj2.emplace<RendererComponent>().SetMesh(vao).SetMaterial(material0);
-			obj2.get<Transform>().SetLocalPosition(0.0f, 0.0f, 1.0f);
-			BehaviourBinding::BindDisabled<SimpleMoveBehaviour>(obj2);
-		}
+//		GameObject obj2 = scene->CreateEntity("monkey_quads");
+//		{
+//			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/monkey_quads.obj");
+//			obj2.emplace<RendererComponent>().SetMesh(vao).SetMaterial(material0);
+//			obj2.get<Transform>().SetLocalPosition(0.0f, 0.0f, 1.0f);
+//			BehaviourBinding::BindDisabled<SimpleMoveBehaviour>(obj2);
+//		}
 
-		GameObject obj3 = scene->CreateEntity("monkey_tris");
+		GameObject obj3 = scene->CreateEntity("Dagger");
 		{
-			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/monkey.obj");
-			obj3.emplace<RendererComponent>().SetMesh(vao).SetMaterial(material0);
+			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/Dagger.obj");
+			obj3.emplace<RendererComponent>().SetMesh(vao).SetMaterial(redmat);
 			obj3.get<Transform>().SetLocalPosition(2.0f, 0.0f, 1.0f);
+			obj3.get<Transform>().SetLocalRotation(0.0f, 90.0f, 0.0f);
+			obj3.get<Transform>().SetLocalScale(0.5f, 0.5f, 0.5f);
+
 			BehaviourBinding::BindDisabled<SimpleMoveBehaviour>(obj3);
 		}
-
-
-		GameObject obj5 = scene->CreateEntity("cube");
+		//Clouds made by farhad.Guli on Sketchfab
+		GameObject obj4 = scene->CreateEntity("Lamps");
 		{
-			MeshBuilder<VertexPosNormTexCol> builder = MeshBuilder<VertexPosNormTexCol>();
-			MeshFactory::AddCube(builder, glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(0.0f));
-			VertexArrayObject::sptr vao = builder.Bake();
-			
-			obj5.emplace<RendererComponent>().SetMesh(vao).SetMaterial(material0);
-			obj5.get<Transform>().SetLocalPosition(-4.0f, 0.0f, 2.0f);
+			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/Lamp.obj");
+			obj4.emplace<RendererComponent>().SetMesh(vao).SetMaterial(yellowmat);
+			obj4.get<Transform>().SetLocalPosition(-3.0f, 0.0f, 1.0f);
+			obj4.get<Transform>().SetLocalRotation(90.0f, 0.0f, 0.0f);
+			//obj4.get<Transform>().SetLocalScale(100.0f, 100.5f, 100.5f);
+
+			BehaviourBinding::BindDisabled<SimpleMoveBehaviour>(obj4);
+		}
+		GameObject obj5 = scene->CreateEntity("Something");
+		{
+			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/orange.obj");
+			obj5.emplace<RendererComponent>().SetMesh(vao).SetMaterial(redmat);
+			obj5.get<Transform>().SetLocalPosition(3.0f, 0.0f, 1.0f);
+			obj5.get<Transform>().SetLocalRotation(90.0f, 0.0f, 0.0f);
+			obj5.get<Transform>().SetLocalScale(100.0f, 100.5f, 100.5f);
+
 			BehaviourBinding::BindDisabled<SimpleMoveBehaviour>(obj5);
 		}
 
-		GameObject obj4 = scene->CreateEntity("moving_box");
-		{
-			// Build a mesh
-			MeshBuilder<VertexPosNormTexCol> builder = MeshBuilder<VertexPosNormTexCol>();
-			MeshFactory::AddCube(builder, glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(0.0f), glm::vec4(1.0f, 0.5f, 0.5f, 1.0f));
-			VertexArrayObject::sptr vao = builder.Bake();
-			
-			obj4.emplace<RendererComponent>().SetMesh(vao).SetMaterial(material0);
-			obj4.get<Transform>().SetLocalPosition(-2.0f, 0.0f, 1.0f);
+		std::vector<glm::vec2> allAvoidAreasFrom = { glm::vec2(-4.0f, -4.0f) };
+		std::vector<glm::vec2> allAvoidAreasTo = { glm::vec2(4.0f, 4.0f) };
 
-			// Bind returns a smart pointer to the behaviour that was added
-			auto pathing = BehaviourBinding::Bind<FollowPathBehaviour>(obj4);
-			// Set up a path for the object to follow
-			pathing->Points.push_back({ -4.0f, -4.0f, 0.0f });
-			pathing->Points.push_back({ 4.0f, -4.0f, 0.0f });
-			pathing->Points.push_back({ 4.0f,  4.0f, 0.0f });
-			pathing->Points.push_back({ -4.0f,  4.0f, 0.0f });
-			pathing->Speed = 2.0f;
-		}
+		std::vector<glm::vec2> rockAvoidAreasFrom = { glm::vec2(-3.0f, -3.0f), glm::vec2(-19.0f, -19.0f), glm::vec2(5.0f, -19.0f),
+														glm::vec2(-19.0f, 5.0f), glm::vec2(-19.0f, -19.0f) };
+		std::vector<glm::vec2> rockAvoidAreasTo = { glm::vec2(3.0f, 3.0f), glm::vec2(19.0f, -5.0f), glm::vec2(19.0f, 19.0f),
+														glm::vec2(19.0f, 19.0f), glm::vec2(-5.0f, 19.0f) };
+		glm::vec2 spawnFromHere = glm::vec2(-19.0f, -19.0f);
+		glm::vec2 spawnToHere = glm::vec2(19.0f, 19.0f);
 
-		GameObject obj6 = scene->CreateEntity("following_monkey");
-		{
-			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/monkey.obj");
-			obj6.emplace<RendererComponent>().SetMesh(vao).SetMaterial(material0);
-			obj6.get<Transform>().SetLocalPosition(0.0f, 0.0f, 3.0f);
-			obj6.get<Transform>().SetParent(obj4);
-			
-			auto pathing = BehaviourBinding::Bind<FollowPathBehaviour>(obj6);
-			// Set up a path for the object to follow
-			pathing->Points.push_back({ 0.0f, 0.0f, 1.0f });
-			pathing->Points.push_back({ 0.0f, 0.0f, 3.0f });
-			pathing->Speed = 2.0f;
-		}
+		EnvironmentGenerator::AddObjectToGeneration("models/Dagger.obj", bluemat, 10,
+			spawnFromHere, spawnToHere, allAvoidAreasFrom, allAvoidAreasTo);
+		EnvironmentGenerator::GenerateEnvironment();
 		
 		// Create an object to be our camera
 		GameObject cameraObject = scene->CreateEntity("Camera");
@@ -299,6 +345,15 @@ int main() {
 			BehaviourBinding::Bind<CameraControlBehaviour>(cameraObject);
 		}
 
+		int width, height;
+		glfwGetWindowSize(BackendHandler::window, &width, &height);
+
+		PostEffect* basicEffect;
+		GameObject framebufferObject = scene->CreateEntity("Basic Effect");
+		{	
+			basicEffect= &framebufferObject.emplace<PostEffect>();
+			basicEffect->Init(height, width);
+		}
 		#pragma endregion 
 		//////////////////////////////////////////////////////////////////////////////////////////
 
@@ -337,8 +392,9 @@ int main() {
 			// use std::bind
 			keyToggles.emplace_back(GLFW_KEY_T, [&]() { cameraObject.get<Camera>().ToggleOrtho(); });
 
-			controllables.push_back(obj2);
 			controllables.push_back(obj3);
+			controllables.push_back(obj4);
+			controllables.push_back(obj5);
 
 			keyToggles.emplace_back(GLFW_KEY_KP_ADD, [&]() {
 				BehaviourBinding::Get<SimpleMoveBehaviour>(controllables[selectedVao])->Enabled = false;
@@ -403,9 +459,9 @@ int main() {
 				}
 			});
 
-
-
 			// Clear the screen
+			basicEffect->Clear();
+
 			glClearColor(0.08f, 0.17f, 0.31f, 1.0f);
 			glEnable(GL_DEPTH_TEST);
 			glClearDepth(1.0f);
@@ -444,6 +500,8 @@ int main() {
 			Shader::sptr current = nullptr;
 			ShaderMaterial::sptr currentMat = nullptr;
 
+			basicEffect->BindBuffer(0);
+
 			// Iterate over the render group components and draw them
 			renderGroup.each( [&](entt::entity e, RendererComponent& renderer, Transform& transform) {
 				// If the shader has changed, set up it's uniforms
@@ -461,6 +519,10 @@ int main() {
 				BackendHandler::RenderVAO(renderer.Material->Shader, renderer.Mesh, viewProjection, transform);
 			});
 
+			basicEffect->UnbindBuffer();
+
+			basicEffect->DrawToScreen();
+
 			// Draw our ImGui content
 			BackendHandler::RenderImGui();
 
@@ -471,6 +533,8 @@ int main() {
 
 		// Nullify scene so that we can release references
 		Application::Instance().ActiveScene = nullptr;
+		//Clean up the environment generator so we can release references
+		EnvironmentGenerator::CleanUpPointers();
 		BackendHandler::ShutdownImGui();
 	}	
 

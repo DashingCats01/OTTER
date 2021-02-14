@@ -6,6 +6,10 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include "Graphics/Framebuffer.h"
+#include "Graphics/Post/PostEffect.h"
+#include "Graphics/LUT.h"
+
 #include <Transform.h>
 #include <VertexArrayObject.h>
 #include <Shader.h>
